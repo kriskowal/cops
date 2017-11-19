@@ -55,25 +55,42 @@ func (c Cursor) Reset(buf []byte) ([]byte, Cursor) {
 }
 
 func (c Cursor) Home(buf []byte) ([]byte, Cursor) {
-	return c.Go(buf, Origin)
+	c.Position = Origin
+	return append(buf, "\033[H"...), c
 }
 
 func (c Cursor) Go(buf []byte, to image.Point) ([]byte, Cursor) {
 	switch {
-	case to.X == 0 && to.Y == c.Position.Y+1 && c.Position != Unknown:
-		buf, c = c.Reset(buf)
-		buf = append(buf, "\r\n"...)
-	case to.Sub(image.Point{1, 0}) == c.Position:
-		buf = append(buf, "\b"...)
-	case to == c.Position:
-	case to == Origin:
-		buf = append(buf, "\033[H"...)
-	default:
+	case c.Position == Unknown:
 		buf = append(buf, "\033["...)
 		buf = append(buf, strconv.Itoa(to.Y)...)
 		buf = append(buf, ";"...)
 		buf = append(buf, strconv.Itoa(to.X)...)
 		buf = append(buf, "H"...)
+	case to.X == 0 && to.Y == c.Position.Y+1:
+		buf, c = c.Reset(buf)
+		buf = append(buf, "\r\n"...)
+	case to.Sub(image.Point{1, 0}) == c.Position:
+		buf = append(buf, "\b"...)
+	default:
+		if to.Y < c.Position.Y {
+			buf = append(buf, "\033["...)
+			buf = append(buf, strconv.Itoa(c.Position.Y-to.Y)...)
+			buf = append(buf, "A"...)
+		} else if to.Y > c.Position.Y {
+			buf = append(buf, "\033["...)
+			buf = append(buf, strconv.Itoa(to.Y-c.Position.Y)...)
+			buf = append(buf, "A"...)
+		}
+		if to.X < c.Position.X {
+			buf = append(buf, "\033["...)
+			buf = append(buf, strconv.Itoa(c.Position.X-to.X)...)
+			buf = append(buf, "D"...)
+		} else if to.X > c.Position.X {
+			buf = append(buf, "\033["...)
+			buf = append(buf, strconv.Itoa(to.X-c.Position.X)...)
+			buf = append(buf, "C"...)
+		}
 	}
 	c.Position = to
 	return buf, c
