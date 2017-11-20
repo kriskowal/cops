@@ -34,15 +34,15 @@ func Raw(fd uintptr) func() {
 	}
 }
 
-func GetBounds(fd uintptr) (image.Rectangle, error) {
-	size, err := GetSize(fd)
+func Bounds(fd uintptr) (image.Rectangle, error) {
+	size, err := Size(fd)
 	if err != nil {
 		return image.Rectangle{}, err
 	}
 	return image.Rect(0, 0, size.X, size.Y), nil
 }
 
-func GetSize(fd uintptr) (size image.Point, err error) {
+func Size(fd uintptr) (size image.Point, err error) {
 	var dimensions [4]uint16
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
 		fd, syscall.TIOCGWINSZ, uintptr(unsafe.Pointer(&dimensions)))

@@ -17,7 +17,7 @@ func main() {
 }
 
 func Main() error {
-	bounds, err := terminal.GetBounds(0)
+	bounds, err := terminal.Bounds(0)
 	if err != nil {
 		return err
 	}

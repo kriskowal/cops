@@ -3,6 +3,7 @@ package display
 import (
 	"image"
 	"image/color"
+	"image/draw"
 	"strconv"
 
 	"github.com/kriskowal/cops"
@@ -41,9 +42,9 @@ type Cell struct {
 	Text       string
 }
 
-func (d Display) Write(x, y int, s string, f, b color.Color) (int, int) {
+func (d Display) Write(x, y int, str string, f, b color.Color) (int, int) {
 	w := d.Sheet.Rect.Dx()
-	for _, c := range s {
+	for _, c := range str {
 		d.Sheet.Set(x, y, string(c))
 		d.Foreground.Set(x, y, rgba(f))
 		d.Background.Set(x, y, rgba(b))
@@ -64,6 +65,12 @@ func (d Display) Fill(s string, f, b color.Color) {
 			d.Background.Set(x, y, rgba(b))
 		}
 	}
+}
+
+func Copy(dest, src *Display) {
+	draw.Draw(dest.Foreground, dest.Rect, src.Foreground, image.Pt(0, 0), draw.Over)
+	draw.Draw(dest.Background, dest.Rect, src.Background, image.Pt(0, 0), draw.Over)
+	sheet.Copy(dest.Sheet, src.Sheet)
 }
 
 func (d Display) At(x, y int) Cell {
@@ -219,11 +226,11 @@ func renderColor24(buf []byte, code string, c color.Color) []byte {
 	buf = append(buf, "\033["...)
 	buf = append(buf, code...)
 	buf = append(buf, ";2;"...)
-	buf = append(buf, strconv.Itoa(int(r/255))...)
+	buf = append(buf, strconv.Itoa(int(r/256))...)
 	buf = append(buf, ";"...)
-	buf = append(buf, strconv.Itoa(int(g/255))...)
+	buf = append(buf, strconv.Itoa(int(g/256))...)
 	buf = append(buf, ";"...)
-	buf = append(buf, strconv.Itoa(int(b/255))...)
+	buf = append(buf, strconv.Itoa(int(b/256))...)
 	buf = append(buf, "m"...)
 	return buf
 }

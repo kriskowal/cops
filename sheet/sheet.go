@@ -14,15 +14,36 @@ type Strings struct {
 
 type Sheet interface {
 	At(x, y int) string
-	Set(x, y int, s string)
 	Bounds() image.Rectangle
 }
 
-func Draw(dest, src Sheet) {
+func Copy(dest, src *Strings) {
 	area := dest.Bounds().Intersect(src.Bounds())
 	for y := area.Min.Y; y < area.Max.Y; y++ {
 		for x := area.Min.X; x < area.Max.X; x++ {
 			dest.Set(x, y, src.At(x, y))
+		}
+	}
+}
+
+func (s *Strings) Write(x, y int, str string) (int, int) {
+	w := s.Rect.Dx()
+	for _, c := range str {
+		s.Set(x, y, string(c))
+		x++
+		if x >= w {
+			x = 0
+			y++
+		}
+	}
+	return x, y
+}
+
+func (s *Strings) Fill(str string) {
+	area := s.Rect
+	for y := area.Min.Y; y < area.Max.Y; y++ {
+		for x := area.Min.X; x < area.Max.X; x++ {
+			s.Set(x, y, str)
 		}
 	}
 }

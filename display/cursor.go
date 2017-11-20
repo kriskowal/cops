@@ -15,7 +15,7 @@ type Cursor struct {
 }
 
 var (
-	Origin  = image.Point{}
+	Origin  = image.ZP
 	Unknown = image.Point{-1, -1}
 
 	DefaultCursor = Cursor{
@@ -70,8 +70,6 @@ func (c Cursor) Go(buf []byte, to image.Point) ([]byte, Cursor) {
 	case to.X == 0 && to.Y == c.Position.Y+1:
 		buf, c = c.Reset(buf)
 		buf = append(buf, "\r\n"...)
-	case to.Sub(image.Point{1, 0}) == c.Position:
-		buf = append(buf, "\b"...)
 	default:
 		if to.Y < c.Position.Y {
 			buf = append(buf, "\033["...)
@@ -80,7 +78,7 @@ func (c Cursor) Go(buf []byte, to image.Point) ([]byte, Cursor) {
 		} else if to.Y > c.Position.Y {
 			buf = append(buf, "\033["...)
 			buf = append(buf, strconv.Itoa(to.Y-c.Position.Y)...)
-			buf = append(buf, "A"...)
+			buf = append(buf, "B"...)
 		}
 		if to.X < c.Position.X {
 			buf = append(buf, "\033["...)
