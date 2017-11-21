@@ -1,4 +1,4 @@
-package cops
+package vtcolor
 
 import "image/color"
 

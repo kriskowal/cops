@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"strconv"
 
-	"github.com/kriskowal/cops"
+	"github.com/kriskowal/cops/vtcolor"
 )
 
 type Cursor struct {
@@ -20,8 +20,8 @@ var (
 
 	DefaultCursor = Cursor{
 		Position:   Unknown,
-		Foreground: cops.Colors[7],
-		Background: cops.Colors[0],
+		Foreground: vtcolor.Colors[7],
+		Background: vtcolor.Colors[0],
 	}
 )
 
@@ -49,8 +49,8 @@ func (c Cursor) Reset(buf []byte) ([]byte, Cursor) {
 	}
 	return append(buf, "\033[m"...), Cursor{
 		Position:   c.Position,
-		Foreground: cops.Colors[7],
-		Background: cops.Colors[0],
+		Foreground: vtcolor.Colors[7],
+		Background: vtcolor.Colors[0],
 	}
 }
 

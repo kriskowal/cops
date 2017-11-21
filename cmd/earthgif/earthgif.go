@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/kriskowal/cops"
 	"github.com/kriskowal/cops/display"
 	"github.com/kriskowal/cops/terminal"
+	"github.com/kriskowal/cops/vtcolor"
 	"github.com/nfnt/resize"
 )
 
@@ -45,8 +45,8 @@ func Main() error {
 	back := display.New(bounds)
 
 	front.Sheet.Fill(" ")
-	draw.Draw(front.Background, bounds, &image.Uniform{cops.Colors[0]}, image.ZP, draw.Src)
-	draw.Draw(front.Foreground, bounds, &image.Uniform{cops.Colors[0]}, image.ZP, draw.Src)
+	draw.Draw(front.Background, bounds, &image.Uniform{vtcolor.Colors[0]}, image.ZP, draw.Src)
+	draw.Draw(front.Foreground, bounds, &image.Uniform{vtcolor.Colors[0]}, image.ZP, draw.Src)
 
 	// Clear Home Hide
 	var buf []byte

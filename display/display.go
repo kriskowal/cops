@@ -6,8 +6,8 @@ import (
 	"image/draw"
 	"strconv"
 
-	"github.com/kriskowal/cops"
 	"github.com/kriskowal/cops/sheet"
+	"github.com/kriskowal/cops/vtcolor"
 )
 
 var colorIndex map[color.RGBA]int
@@ -15,7 +15,7 @@ var colorIndex map[color.RGBA]int
 func init() {
 	colorIndex = make(map[color.RGBA]int, 256)
 	for i := 0; i < 256; i++ {
-		colorIndex[cops.Colors[i]] = i
+		colorIndex[vtcolor.Colors[i]] = i
 	}
 }
 
@@ -140,27 +140,27 @@ func noColor(buf []byte, c color.Color) []byte {
 }
 
 func renderBackgroundColor3(buf []byte, c color.Color) []byte {
-	return renderBackgroundColor(buf, cops.Palette3, c)
+	return renderBackgroundColor(buf, vtcolor.Palette3, c)
 }
 
 func renderForegroundColor3(buf []byte, c color.Color) []byte {
-	return renderForegroundColor(buf, cops.Palette3, c)
+	return renderForegroundColor(buf, vtcolor.Palette3, c)
 }
 
 func renderBackgroundColor4(buf []byte, c color.Color) []byte {
-	return renderBackgroundColor(buf, cops.Palette4, c)
+	return renderBackgroundColor(buf, vtcolor.Palette4, c)
 }
 
 func renderForegroundColor4(buf []byte, c color.Color) []byte {
-	return renderForegroundColor(buf, cops.Palette4, c)
+	return renderForegroundColor(buf, vtcolor.Palette4, c)
 }
 
 func renderBackgroundColor8(buf []byte, c color.Color) []byte {
-	return renderBackgroundColor(buf, cops.Palette8, c)
+	return renderBackgroundColor(buf, vtcolor.Palette8, c)
 }
 
 func renderForegroundColor8(buf []byte, c color.Color) []byte {
-	return renderForegroundColor(buf, cops.Palette8, c)
+	return renderForegroundColor(buf, vtcolor.Palette8, c)
 }
 
 func renderForegroundColor(buf []byte, p color.Palette, c color.Color) []byte {

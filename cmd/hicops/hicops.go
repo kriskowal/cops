@@ -5,9 +5,9 @@ import (
 	"image/color"
 	"os"
 
-	"github.com/kriskowal/cops"
 	"github.com/kriskowal/cops/display"
 	"github.com/kriskowal/cops/terminal"
+	"github.com/kriskowal/cops/vtcolor"
 )
 
 func main() {
@@ -25,8 +25,8 @@ func Main() error {
 	front := display.New(bounds)
 	back := display.New(bounds)
 
-	front.Fill(".", color.RGBA{31, 31, 31, 255}, cops.Colors[0])
-	front.Write(0, bounds.Max.Y/2, "Press any key to continue...", color.RGBA{0, 127, 127, 255}, cops.Colors[0])
+	front.Fill(".", color.RGBA{31, 31, 31, 255}, vtcolor.Colors[0])
+	front.Write(0, bounds.Max.Y/2, "Press any key to continue...", color.RGBA{0, 127, 127, 255}, vtcolor.Colors[0])
 
 	var buf []byte
 	cursor := display.DefaultCursor
