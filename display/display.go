@@ -112,10 +112,10 @@ func renderer(renderForegroundColor, renderBackgroundColor colorFunc) RenderFunc
 				if len(o.Text) == 1 {
 					cursor.Position.X++
 				} else if len(o.Text) > 1 {
-					// Invalidate cursor position to force position reset
+					// Invalidate cursor column to force position reset
 					// before next draw, if the string drawn might be longer
 					// than one cell wide.
-					cursor.Position = Unknown
+					cursor.Position.X = -1
 				}
 
 			}

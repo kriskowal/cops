@@ -60,36 +60,68 @@ func (c Cursor) Home(buf []byte) ([]byte, Cursor) {
 }
 
 func (c Cursor) Go(buf []byte, to image.Point) ([]byte, Cursor) {
-	switch {
-	case c.Position == Unknown:
+	if c.Position == Unknown {
+		// If the cursor position is completely unknown, move relative to
+		// screen origin. This mode must be avoided to render relative to
+		// cursor position inline with a scrolling log, by setting the cursor
+		// position relative to an arbitrary origin before rendering.
 		buf = append(buf, "\033["...)
 		buf = append(buf, strconv.Itoa(to.Y)...)
 		buf = append(buf, ";"...)
 		buf = append(buf, strconv.Itoa(to.X)...)
 		buf = append(buf, "H"...)
-	case to.X == 0 && to.Y == c.Position.Y+1:
+		c.Position = to
+		return buf, c
+	}
+
+	if c.Position.X == -1 {
+		// If only horizontal position is unknown, return to first column and
+		// march forward.
+		// Rendering a non-ASCII cell of unknown or indeterminite width may
+		// invalidate the column number.
+		// For example, a skin tone emoji may or may not render as a single
+		// column glyph.
+		buf = append(buf, "\r"...)
+		c.Position.X = 0
+		// Continue...
+	}
+
+	if to.X == 0 && to.Y == c.Position.Y+1 {
 		buf, c = c.Reset(buf)
 		buf = append(buf, "\r\n"...)
-	default:
-		if to.Y < c.Position.Y {
-			buf = append(buf, "\033["...)
-			buf = append(buf, strconv.Itoa(c.Position.Y-to.Y)...)
-			buf = append(buf, "A"...)
-		} else if to.Y > c.Position.Y {
-			buf = append(buf, "\033["...)
-			buf = append(buf, strconv.Itoa(to.Y-c.Position.Y)...)
-			buf = append(buf, "B"...)
-		}
-		if to.X < c.Position.X {
-			buf = append(buf, "\033["...)
-			buf = append(buf, strconv.Itoa(c.Position.X-to.X)...)
-			buf = append(buf, "D"...)
-		} else if to.X > c.Position.X {
-			buf = append(buf, "\033["...)
-			buf = append(buf, strconv.Itoa(to.X-c.Position.X)...)
-			buf = append(buf, "C"...)
-		}
+		c.Position.X = 0
+		c.Position.Y++
+	} else if to.X == 0 && c.Position.X != 0 {
+		buf, c = c.Reset(buf)
+		buf = append(buf, "\r"...)
+		c.Position.X = 0
+
+		// In addition to scrolling back to the first column generally, this
+		// has the effect of resetting the column if writing a multi-byte
+		// string invalidates the cursor's horizontal position.
+		// For example, a skin tone emoji may or may not render as a single
+		// column glyph.
 	}
+
+	if to.Y < c.Position.Y {
+		buf = append(buf, "\033["...)
+		buf = append(buf, strconv.Itoa(c.Position.Y-to.Y)...)
+		buf = append(buf, "A"...)
+	} else if to.Y > c.Position.Y {
+		buf = append(buf, "\033["...)
+		buf = append(buf, strconv.Itoa(to.Y-c.Position.Y)...)
+		buf = append(buf, "B"...)
+	}
+	if to.X < c.Position.X {
+		buf = append(buf, "\033["...)
+		buf = append(buf, strconv.Itoa(c.Position.X-to.X)...)
+		buf = append(buf, "D"...)
+	} else if to.X > c.Position.X {
+		buf = append(buf, "\033["...)
+		buf = append(buf, strconv.Itoa(to.X-c.Position.X)...)
+		buf = append(buf, "C"...)
+	}
+
 	c.Position = to
 	return buf, c
 }
