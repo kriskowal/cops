@@ -22,15 +22,16 @@ func main() {
 }
 
 func Main() error {
-	restore := terminal.Raw(os.Stdin.Fd())
-	defer restore()
+	term := terminal.New(os.Stdin.Fd())
+	defer term.Restore()
+	term.SetRaw()
 
 	data, err := Asset("earth.gif")
 	if err != nil {
 		return err
 	}
 
-	bounds, err := terminal.Bounds(os.Stdin.Fd())
+	bounds, err := term.Bounds()
 	if err != nil {
 		return err
 	}

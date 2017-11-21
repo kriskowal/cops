@@ -17,7 +17,11 @@ func main() {
 }
 
 func Main() error {
-	bounds, err := terminal.Bounds(0)
+	term := terminal.New(os.Stdin.Fd())
+	defer term.Restore()
+	term.SetRaw()
+
+	bounds, err := term.Bounds()
 	if err != nil {
 		return err
 	}
@@ -39,8 +43,6 @@ func Main() error {
 	os.Stdout.Write(buf)
 	buf = buf[0:0]
 
-	restore := terminal.Raw(os.Stdin.Fd())
-	defer restore()
 	var input [1]byte
 	os.Stdin.Read(input[0:1])
 
