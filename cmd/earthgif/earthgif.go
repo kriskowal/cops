@@ -9,11 +9,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/disintegration/imaging"
 	"github.com/kriskowal/cops/cursor"
 	"github.com/kriskowal/cops/display"
 	"github.com/kriskowal/cops/terminal"
 	"github.com/kriskowal/cops/vtcolor"
-	"github.com/nfnt/resize"
 )
 
 func main() {
@@ -73,7 +73,7 @@ Loop:
 	for i := 0; ; i = (i + 1) % len(imgs.Image) {
 		img := imgs.Image[i]
 		// Resize image and draw onto display background
-		img2 := resize.Resize(uint(projection.Dx()), uint(projection.Dy()), img, resize.Lanczos3)
+		img2 := imaging.Resize(img, projection.Dx(), projection.Dy(), imaging.Lanczos)
 		draw.Draw(front.Background, projection, img2, img2.Bounds().Min, draw.Over)
 
 		// Draw frame
