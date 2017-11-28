@@ -16,7 +16,7 @@ Since the foreground and background layers are standard Go images,
 we can use Go's `draw` package and third-party image processing packages to
 composite color layers.
 
-```
+```go
 bounds := image.Rect(0, 0, 80, 23)
 front := display.New(bounds)
 back := display.New(bounds)
@@ -28,7 +28,7 @@ Cops can draw displays with alpha transparency channels over lower display
 layers.
 Use the `Draw` method to compose displays in layers.
 
-```
+```go
 display.Draw(
     dst *display.Display,
     r image.Rectangle,
@@ -61,7 +61,7 @@ The display package provides a `Render` method.
 The render method produces a sequence of bytes to write that will update a
 terminal, skipping over cells that have not changed.
 
-```
+```go
 Render(
     buf []byte,
     cur cursorCursor,
@@ -83,7 +83,7 @@ the prior allocation, growing the allocation only when necessary.
 Typical terminal applications swap a front and back display, drawing
 each frame over the previous.
 
-```
+```go
 var buf []byte
 cur := cursor.Start
 buf, cur = display.Render(buf, cur, front, back, vtcolor.Model24)
@@ -105,7 +105,7 @@ methods append to a buffer and return the resulting cursor state.
 The initial cursor state is unknown, assuming nothing about the cursor
 position or coloring.
 
-```
+```go
 cur := cursor.Start
 ```
 
@@ -236,9 +236,10 @@ bounds := term.Bounds()
 front, back := display.New2(bounds)
 ```
 
----
 
-How to fill the background color for a text panel.
+# Tips / Tricks
+
+## How to fill the background color for a text panel
 
 ```go
 panel := text.Display("Press any key to continue...", vtcolor.Colors[7])
