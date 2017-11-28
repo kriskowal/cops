@@ -45,7 +45,7 @@ Drawing will:
 - Draw the foreground of the source over the foreground of the destination image.
   Typically, the foreground is transparent for all cells empty of text.
   Otherwise, this operation can have interesting results.
-- Draw the background of the source over the *background* of the destination image.
+- Draw the background of the source over the *foreground* of the destination image.
   This allows for translucent background colors on the source image partially
   obscuring the text of the destination image.
 - Draw the background of the source over the background of the destination image.
@@ -88,6 +88,7 @@ var buf []byte
 cur := cursor.Start
 buf, cur = display.Render(buf, cur, front, back, vtcolor.Model24)
 front, back = back, front
+buf = buf[0:0]
 ```
 
 Although the display models all colors in 32 bit RGBA, the color model
@@ -247,8 +248,8 @@ draw.Draw(panel.Background, panel.Bounds(), &image.Uniform{color.NRGBA{63, 63, 6
 The background color can be translucent.
 Drawing a display over another display:
 
-- overrides the foreground color for all cells with present text, including
-  spaces (but not including cells skipped by tabs).
+- overrides the foreground color for all cells with text, except empty and
+  space cells.
 - draws the panel's background color over the foreground *and* background color
   of the underlying cell. This makes it possible to render translucent panels.
   The underlying text shows through, but faded by the overlying background
@@ -260,5 +261,5 @@ display.Draw(front, panel.Bounds(), panel, image.ZP, draw.Over)
 
 ---
 
-Copyright 2018 Kristopher Michael Kowal and contributors.
+Copyright 2017 Kristopher Michael Kowal and contributors.
 Apache 2.0 license.
