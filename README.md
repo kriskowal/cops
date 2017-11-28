@@ -204,7 +204,7 @@ front, back := display.New2(bounds)
 
 msg := "Hello, Cops!"
 msgbox := text.Bounds(msg)
-center := geometry.MiddleCenter(msgbox, bounds)
+center := rectangle.MiddleCenter(msgbox, bounds)
 text.Write(front, center, msg, vtcolor.Colors[7])
 ```
 

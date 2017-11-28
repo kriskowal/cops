@@ -9,7 +9,7 @@ import (
 
 	"github.com/kriskowal/cops/cursor"
 	"github.com/kriskowal/cops/display"
-	"github.com/kriskowal/cops/geometry"
+	"github.com/kriskowal/cops/rectangle"
 	"github.com/kriskowal/cops/terminal"
 	"github.com/kriskowal/cops/text"
 	"github.com/kriskowal/cops/vtcolor"
@@ -38,8 +38,8 @@ func Main() error {
 
 	msg := "Press any key to continue..."
 	msgbox := text.Bounds(msg)
-	inset := geometry.MiddleCenter(msgbox, bounds)
-	outset := geometry.Outset(inset, 4, 2)
+	inset := rectangle.MiddleCenter(msgbox, bounds)
+	outset := rectangle.Outset(inset, 4, 2)
 	panel := display.New(outset)
 	// Fill the panel with a translucent background color.
 	draw.Draw(panel.Background, outset, &image.Uniform{color.NRGBA{63, 63, 127, 127}}, image.ZP, draw.Over)
