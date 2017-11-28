@@ -1,236 +1,162 @@
+// Package display models, composes, and renders virtual terminal displays
+// using ANSI escape sequences.
 package display
 
 import (
 	"image"
 	"image/color"
 	"image/draw"
-	"strconv"
 
-	"github.com/kriskowal/cops/sheet"
+	"github.com/kriskowal/cops/cursor"
+	"github.com/kriskowal/cops/internal"
+	"github.com/kriskowal/cops/textile"
 	"github.com/kriskowal/cops/vtcolor"
 )
 
-var colorIndex map[color.RGBA]int
-
-func init() {
-	colorIndex = make(map[color.RGBA]int, 256)
-	for i := 0; i < 256; i++ {
-		colorIndex[vtcolor.Colors[i]] = i
-	}
-}
-
+// New returns a new display with the given bounding rectangle.
+// The rectangle need not rest at the origin.
 func New(r image.Rectangle) *Display {
 	return &Display{
 		Background: image.NewRGBA(r),
 		Foreground: image.NewRGBA(r),
-		Sheet:      sheet.NewStrings(r),
+		Text:       textile.New(r),
 		Rect:       r,
 	}
 }
 
+// New2 returns a pair of displays with the same rectangle,
+// suitable for creating front and back buffers.
+//
+//  bounds := term.Bounds()
+//	front, back := display.New2(bounds)
+func New2(r image.Rectangle) (*Display, *Display) {
+	return New(r), New(r)
+}
+
+// Display models a terminal display's state as three images.
 type Display struct {
 	Background *image.RGBA
 	Foreground *image.RGBA
-	Sheet      *sheet.Strings
+	Text       *textile.Textile
 	Rect       image.Rectangle
 	// TODO underline and intensity
 }
 
-type Cell struct {
-	Foreground color.RGBA
-	Background color.RGBA
-	Text       string
-}
-
-func (d Display) Write(x, y int, str string, f, b color.Color) (int, int) {
-	w := d.Sheet.Rect.Dx()
-	for _, c := range str {
-		d.Sheet.Set(x, y, string(c))
-		d.Foreground.Set(x, y, rgba(f))
-		d.Background.Set(x, y, rgba(b))
-		x++
-		if x >= w {
-			x = 0
-			y++
-		}
+// SubDisplay returns a mutable sub-region within the display, sharing the same
+// memory.
+func (d *Display) SubDisplay(r image.Rectangle) *Display {
+	r = r.Intersect(d.Rect)
+	return &Display{
+		Background: d.Background.SubImage(r).(*image.RGBA),
+		Foreground: d.Foreground.SubImage(r).(*image.RGBA),
+		Text:       d.Text.SubText(r),
+		Rect:       r,
 	}
-	return x, y
 }
 
-func (d Display) Fill(s string, f, b color.Color) {
+// Fill overwrites every cell with the given text and foreground and background
+// colors.
+func (d *Display) Fill(t string, f, b color.Color) {
 	for y := d.Rect.Min.Y; y < d.Rect.Max.Y; y++ {
 		for x := d.Rect.Min.X; x < d.Rect.Max.X; x++ {
-			d.Sheet.Set(x, y, s)
-			d.Foreground.Set(x, y, rgba(f))
-			d.Background.Set(x, y, rgba(b))
+			d.Set(x, y, t, f, b)
 		}
 	}
 }
 
-func Copy(dest, src *Display) {
-	draw.Draw(dest.Foreground, dest.Rect, src.Foreground, image.Pt(0, 0), draw.Over)
-	draw.Draw(dest.Background, dest.Rect, src.Background, image.Pt(0, 0), draw.Over)
-	sheet.Copy(dest.Sheet, src.Sheet)
+// Clear fills the display with transparent cells.
+func (d *Display) Clear() {
+	d.Fill("", color.Transparent, color.Transparent)
 }
 
-func (d Display) At(x, y int) Cell {
-	return Cell{
-		Foreground: rgba(d.Foreground.At(x, y)),
-		Background: rgba(d.Background.At(x, y)),
-		Text:       d.Sheet.At(x, y),
+// Set overwrites the text and foreground and background colors of the cell at
+// the given position.
+func (d *Display) Set(x, y int, t string, f, b color.Color) {
+	d.Text.Set(x, y, t)
+	d.Foreground.Set(x, y, rgba(f))
+	d.Background.Set(x, y, rgba(b))
+}
+
+// Draw composes one display over another. The bounds dictate the region of the
+// destination.  The offset dictates the position within the source. Draw will:
+//
+// Overwrite the text layer for all non-empty text cells inside the rectangle.
+// Fill the text with space " " to overdraw all cells.
+//
+// Draw the foreground of the source over the foreground of the destination
+// image.  Typically, the foreground is transparent for all cells empty of
+// text.  Otherwise, this operation can have interesting results.
+//
+// Draw the background of the source over the *background* of the destination
+// image.  This allows for translucent background colors on the source image
+// partially obscuring the text of the destination image.
+//
+// Draw the background of the source over the background of the destination
+// image.
+func Draw(dst *Display, r image.Rectangle, src *Display, sp image.Point, op draw.Op) {
+	internal.Clip(dst.Bounds(), &r, src.Bounds(), &sp, nil, nil)
+	if r.Empty() {
+		return
 	}
+	draw.Draw(dst.Background, r, src.Background, sp, op)
+	draw.Draw(dst.Foreground, r, src.Background, sp, op)
+	draw.Draw(dst.Foreground, r, src.Foreground, sp, op)
+	textile.Draw(dst.Text, r, src.Text, sp)
 }
 
-type RenderFunc func(buf []byte, cursor Cursor, over, under *Display) ([]byte, Cursor)
+// At returns the text and foreground and background colors at the given
+// coordinates.
+func (d *Display) At(x, y int) (t string, f, b color.Color) {
+	return d.Text.At(x, y), rgba(d.Foreground.At(x, y)), rgba(d.Background.At(x, y))
+}
 
-type colorFunc func(buf []byte, c color.Color) []byte
+// Bounds returns the bounding rectangle of the display.
+func (d *Display) Bounds() image.Rectangle {
+	return d.Rect
+}
 
-func renderer(renderForegroundColor, renderBackgroundColor colorFunc) RenderFunc {
-	return RenderFunc(func(buf []byte, cursor Cursor, over, under *Display) ([]byte, Cursor) {
-		for y := over.Rect.Min.Y; y < over.Rect.Max.Y; y++ {
-			for x := over.Rect.Min.X; x < over.Rect.Max.X; x++ {
-				o := over.At(x, y)
-				u := under.At(x, y)
+// Render appends ANSI escape sequences to a byte slice to update a terminal
+// display to look like the front model, skipping cells that are the same in
+// the back model, using escape sequences and the nearest matching colors in
+// the given color model.
+func Render(buf []byte, cur cursor.Cursor, over, under *Display, model vtcolor.Model) ([]byte, cursor.Cursor) {
+	for y := over.Rect.Min.Y; y < over.Rect.Max.Y; y++ {
+		for x := over.Rect.Min.X; x < over.Rect.Max.X; x++ {
+			ot, of, ob := over.At(x, y)
+			ut, uf, ub := under.At(x, y)
 
-				// nop if empty text or previous generation of the display
-				// was already correct.
-				if len(o.Text) == 0 || o == u {
-					continue
-				}
-
-				buf, cursor = cursor.Go(buf, image.Pt(x, y))
-				if o.Foreground != cursor.Foreground {
-					buf = renderForegroundColor(buf, o.Foreground)
-					cursor.Foreground = o.Foreground
-				}
-				if o.Background != cursor.Background {
-					buf = renderBackgroundColor(buf, o.Background)
-					cursor.Background = o.Background
-				}
-				buf = append(buf, o.Text...)
-
-				if len(o.Text) == 1 {
-					cursor.Position.X++
-				} else if len(o.Text) > 1 {
-					// Invalidate cursor column to force position reset
-					// before next draw, if the string drawn might be longer
-					// than one cell wide.
-					cursor.Position.X = -1
-				}
-
+			// nop if empty text or previous generation of the display
+			// was already correct.
+			if len(ot) == 0 || ot == ut && of == uf && ob == ub {
+				continue
 			}
+
+			buf, cur = cur.Go(buf, image.Pt(x, y))
+			if of != cur.Foreground {
+				buf = model.RenderForegroundColor(buf, of)
+				cur.Foreground = rgba(of)
+			}
+			if ob != cur.Background {
+				buf = model.RenderBackgroundColor(buf, ob)
+				cur.Background = rgba(ob)
+			}
+			buf = append(buf, ot...)
+
+			if len(ot) == 1 {
+				cur.Position.X++
+			} else if len(ot) > 1 {
+				// Invalidate cursor column to force position reset
+				// before next draw, if the string drawn might be longer
+				// than one cell wide.
+				cur.Position.X = -1
+			}
+
 		}
-		buf, cursor = cursor.Reset(buf)
-		return buf, cursor
-	})
+	}
+	buf, cur = cur.Reset(buf)
+	return buf, cur
 }
 
 func rgba(c color.Color) color.RGBA {
 	return color.RGBAModel.Convert(c).(color.RGBA)
-}
-
-var Render0 = renderer(noColor, noColor)
-var Render3 = renderer(renderForegroundColor3, renderBackgroundColor3)
-var Render4 = renderer(renderForegroundColor4, renderBackgroundColor4)
-var Render8 = renderer(renderForegroundColor8, renderBackgroundColor8)
-var Render24 = renderer(renderForegroundColor24, renderBackgroundColor24)
-
-func noColor(buf []byte, c color.Color) []byte {
-	return buf
-}
-
-func renderBackgroundColor3(buf []byte, c color.Color) []byte {
-	return renderBackgroundColor(buf, vtcolor.Palette3, c)
-}
-
-func renderForegroundColor3(buf []byte, c color.Color) []byte {
-	return renderForegroundColor(buf, vtcolor.Palette3, c)
-}
-
-func renderBackgroundColor4(buf []byte, c color.Color) []byte {
-	return renderBackgroundColor(buf, vtcolor.Palette4, c)
-}
-
-func renderForegroundColor4(buf []byte, c color.Color) []byte {
-	return renderForegroundColor(buf, vtcolor.Palette4, c)
-}
-
-func renderBackgroundColor8(buf []byte, c color.Color) []byte {
-	return renderBackgroundColor(buf, vtcolor.Palette8, c)
-}
-
-func renderForegroundColor8(buf []byte, c color.Color) []byte {
-	return renderForegroundColor(buf, vtcolor.Palette8, c)
-}
-
-func renderForegroundColor(buf []byte, p color.Palette, c color.Color) []byte {
-	i := p.Index(c)
-	return renderForegroundColorIndex(buf, i)
-}
-
-func renderBackgroundColor(buf []byte, p color.Palette, c color.Color) []byte {
-	i := p.Index(c)
-	return renderBackgroundColorIndex(buf, i)
-}
-
-func renderForegroundColorIndex(buf []byte, i int) []byte {
-	if i < 8 {
-		buf = append(buf, "\033["...)
-		buf = append(buf, strconv.Itoa(int(30+i))...)
-		buf = append(buf, "m"...)
-	} else if i < 16 {
-		buf = append(buf, "\033["...)
-		buf = append(buf, strconv.Itoa(int(90-8+i))...)
-		buf = append(buf, "m"...)
-	} else {
-		buf = append(buf, "\033[38;5;"...)
-		buf = append(buf, strconv.Itoa(int(i))...)
-		buf = append(buf, "m"...)
-	}
-	return buf
-}
-
-func renderBackgroundColorIndex(buf []byte, i int) []byte {
-	if i < 8 {
-		buf = append(buf, "\033["...)
-		buf = append(buf, strconv.Itoa(int(40+i))...)
-		buf = append(buf, "m"...)
-	} else if i < 16 {
-		buf = append(buf, "\033["...)
-		buf = append(buf, strconv.Itoa(int(100-8+i))...)
-		buf = append(buf, "m"...)
-	} else {
-		buf = append(buf, "\033[48;5;"...)
-		buf = append(buf, strconv.Itoa(int(i))...)
-		buf = append(buf, "m"...)
-	}
-	return buf
-}
-
-func renderForegroundColor24(buf []byte, c color.Color) []byte {
-	if i, ok := colorIndex[rgba(c)]; ok {
-		return renderForegroundColorIndex(buf, i)
-	}
-	return renderColor24(buf, "38", c)
-}
-
-func renderBackgroundColor24(buf []byte, c color.Color) []byte {
-	if i, ok := colorIndex[rgba(c)]; ok {
-		return renderBackgroundColorIndex(buf, i)
-	}
-	return renderColor24(buf, "48", c)
-}
-
-func renderColor24(buf []byte, code string, c color.Color) []byte {
-	r, g, b, _ := c.RGBA()
-	buf = append(buf, "\033["...)
-	buf = append(buf, code...)
-	buf = append(buf, ";2;"...)
-	buf = append(buf, strconv.Itoa(int(r/256))...)
-	buf = append(buf, ";"...)
-	buf = append(buf, strconv.Itoa(int(g/256))...)
-	buf = append(buf, ";"...)
-	buf = append(buf, strconv.Itoa(int(b/256))...)
-	buf = append(buf, "m"...)
-	return buf
 }

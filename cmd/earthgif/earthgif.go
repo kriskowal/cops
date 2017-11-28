@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/kriskowal/cops/cursor"
 	"github.com/kriskowal/cops/display"
 	"github.com/kriskowal/cops/terminal"
 	"github.com/kriskowal/cops/vtcolor"
@@ -42,19 +43,18 @@ func Main() error {
 		return fmt.Errorf("no frames")
 	}
 
-	front := display.New(bounds)
-	back := display.New(bounds)
+	front, back := display.New2(bounds)
 
-	front.Sheet.Fill(" ")
+	front.Text.Fill(" ")
 	draw.Draw(front.Background, bounds, &image.Uniform{vtcolor.Colors[0]}, image.ZP, draw.Src)
 	draw.Draw(front.Foreground, bounds, &image.Uniform{vtcolor.Colors[0]}, image.ZP, draw.Src)
 
 	// Clear Home Hide
 	var buf []byte
-	cursor := display.DefaultCursor
-	buf = cursor.Hide(buf)
-	buf, cursor = cursor.Clear(buf)
-	buf, cursor = cursor.Home(buf)
+	cur := cursor.Start
+	buf, cur = cur.Hide(buf)
+	buf, cur = cur.Clear(buf)
+	buf, cur = cur.Home(buf)
 
 	base := imgs.Image[0]
 	projection := projectCenterPreserveAspect(base.Bounds().Size(), bounds.Size())
@@ -74,12 +74,12 @@ Loop:
 		img := imgs.Image[i]
 		// Resize image and draw onto display background
 		img2 := resize.Resize(uint(projection.Dx()), uint(projection.Dy()), img, resize.Lanczos3)
-		draw.Draw(front.Background, projection, img2, image.ZP, draw.Over)
+		draw.Draw(front.Background, projection, img2, img2.Bounds().Min, draw.Over)
 
 		// Draw frame
-		buf, cursor = display.Render24(buf, cursor, front, back)
+		buf, cur = display.Render(buf, cur, front, back, vtcolor.Model24)
 		front, back = back, front
-		buf, cursor = cursor.Home(buf)
+		buf, cur = cur.Home(buf)
 		os.Stdout.Write(buf)
 		buf = buf[0:0]
 
@@ -97,9 +97,9 @@ Loop:
 	}
 
 	// Restore
-	buf, cursor = cursor.Home(buf)
-	buf, cursor = cursor.Clear(buf)
-	buf = cursor.Show(buf)
+	buf, cur = cur.Home(buf)
+	buf, cur = cur.Clear(buf)
+	buf, cur = cur.Show(buf)
 	os.Stdout.Write(buf)
 	buf = buf[0:0]
 

@@ -1,4 +1,7 @@
-package display
+// Package cursor models cursor state and has methods to modify color,
+// position, and visibility, appending the corresponding ANSI escape sequences
+// to a write buffer.
+package cursor
 
 import (
 	"image"
@@ -8,43 +11,71 @@ import (
 	"github.com/kriskowal/cops/vtcolor"
 )
 
+// Cursor models the known or unknown states of a cursor.
 type Cursor struct {
-	Position   image.Point
+	// Position is the position of the cursor.
+	// Negative values indicate that the X or Y position is not known,
+	// so the next position change must be relative to the beginning of the
+	// same line or possibly the origin.
+	Position image.Point
+	// Foreground is the foreground color for subsequent text.
+	// Transparent indicates that the color is unknown, so the next text must
+	// be preceded by an SGR (set graphics) ANSI sequence to set it.
 	Foreground color.RGBA
+	// Foreground is the foreground color for subsequent text.
+	// Transparent indicates that the color is unknown, so the next text must
+	// be preceded by an SGR (set graphics) ANSI sequence to set it.
 	Background color.RGBA
 }
 
 var (
-	Origin  = image.ZP
-	Unknown = image.Point{-1, -1}
+	// Lost indicates that the cursor position is unknown.
+	Lost = image.Point{-1, -1}
 
-	DefaultCursor = Cursor{
-		Position:   Unknown,
+	// Start is a cursor state that makes no assumptions about the cursor's
+	// position or colors, necessitating a seek from origin and explicit color
+	// settings for the next text.
+	Start = Cursor{
+		Position:   Lost,
+		Foreground: vtcolor.Transparent,
+		Background: vtcolor.Transparent,
+	}
+
+	// Reset is a cursor state indicating that the cursor is at the origin
+	// and that the foreground color is white (7), background black (0).
+	// This is the state cur.Reset() returns to, and the state for which
+	// cur.Reset() will append nothing to the buffer.
+	Reset = Cursor{
+		Position:   image.ZP,
 		Foreground: vtcolor.Colors[7],
 		Background: vtcolor.Colors[0],
 	}
 )
 
-func (c Cursor) Hide(buf []byte) []byte {
-	return append(buf, "\033[?25l"...)
+// Hide hides the cursor.
+func (c Cursor) Hide(buf []byte) ([]byte, Cursor) {
+	return append(buf, "\033[?25l"...), c
 }
 
-func (c Cursor) Show(buf []byte) []byte {
-	return append(buf, "\033[?25h"...)
+// Show reveals the cursor.
+func (c Cursor) Show(buf []byte) ([]byte, Cursor) {
+	return append(buf, "\033[?25h"...), c
 }
 
+// Clear erases the whole display.
 func (c Cursor) Clear(buf []byte) ([]byte, Cursor) {
 	// Clear implicitly invalidates the cursor position since its behavior is
-	// consistent across terminal implementations.
+	// inconsistent across terminal implementations.
 	return append(buf, "\033[2J"...), Cursor{
-		Position:   Unknown,
+		Position:   Lost,
 		Foreground: c.Foreground,
 		Background: c.Background,
 	}
 }
 
+// Reset returns the terminal to default white on black colors.
 func (c Cursor) Reset(buf []byte) ([]byte, Cursor) {
-	if c == DefaultCursor {
+	if c.Foreground == vtcolor.Colors[7] && c.Background == vtcolor.Colors[0] {
 		return buf, c
 	}
 	return append(buf, "\033[m"...), Cursor{
@@ -54,13 +85,18 @@ func (c Cursor) Reset(buf []byte) ([]byte, Cursor) {
 	}
 }
 
+// Home seeks the cursor to the origin, using display absolute coordinates.
 func (c Cursor) Home(buf []byte) ([]byte, Cursor) {
-	c.Position = Origin
+	c.Position = image.ZP
 	return append(buf, "\033[H"...), c
 }
 
+// Go moves the cursor to another position, prefering to use relative motion,
+// using line relative if the column is unknown, using display origin relative
+// only if the line is also unknown. If the column is unknown, use "\r" to seek
+// to column 0 of the same line.
 func (c Cursor) Go(buf []byte, to image.Point) ([]byte, Cursor) {
-	if c.Position == Unknown {
+	if c.Position == Lost {
 		// If the cursor position is completely unknown, move relative to
 		// screen origin. This mode must be avoided to render relative to
 		// cursor position inline with a scrolling log, by setting the cursor
