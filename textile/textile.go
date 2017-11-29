@@ -20,12 +20,11 @@ func New(r image.Rectangle) *Textile {
 	w, h := r.Dx(), r.Dy()
 	count := w * h
 	buf := make([]string, count)
-	t := &Textile{
+	return &Textile{
 		Strings: buf,
 		Stride:  w,
 		Rect:    r,
 	}
-	return t
 }
 
 // Bounds returns the bounding box of the textile.

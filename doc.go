@@ -22,6 +22,12 @@
 // The "vtcolor" package supplements "color" with virtual terminal color
 // palettes and rendering models for 0, 3, 4, 8, and 24 bit color.
 //
-// The "geometry" package provides conveniences for manipulating image
-// rectangles and points for composition.
+// The "rectangle" package provides conveniences for manipulating image
+// rectangles for display composition.
+//
+// The "bitmap" package provides a compact representation of bitmap images,
+// suitable for use as masks or sources for braille bitmap displays.
+//
+// The "braille" package draws bitmap images onto displays as a matrix of
+// braille text.
 package cops

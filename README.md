@@ -236,6 +236,16 @@ bounds := term.Bounds()
 front, back := display.New2(bounds)
 ```
 
+## bitmap
+
+The `bitmap` package provides a memory compact image type for images with only
+two colors, as well as an image transformation layer that interprets another
+image as a bitmap of the closer match of two colors.
+
+## braille
+
+The `braille` package draws bitmaps as matrices of braille dots.
+See `cmd/braille/` for a demonstration.
 
 # Tips / Tricks
 
