@@ -1,5 +1,12 @@
 // Package display models, composes, and renders virtual terminal displays
 // using ANSI escape sequences.
+// Models displays as three layers: a text layer and foreground and background
+// color layers as images in any logical color space.
+// The package includes colors, palettes, and rendering models for terminal
+// displays supporting 0, 3, 4, 8, and 24 bit color.
+// The package also includes a cursor that tracks the known position and colors
+// of the cursor, appending ANSI escape sequences to incrementally modify that
+// state.
 package display
 
 import (
@@ -7,10 +14,8 @@ import (
 	"image/color"
 	"image/draw"
 
-	"github.com/kriskowal/cops/cursor"
 	"github.com/kriskowal/cops/internal"
 	"github.com/kriskowal/cops/textile"
-	"github.com/kriskowal/cops/vtcolor"
 )
 
 // New returns a new display with the given bounding rectangle.
@@ -107,6 +112,9 @@ func Draw(dst *Display, r image.Rectangle, src *Display, sp image.Point, op draw
 // At returns the text and foreground and background colors at the given
 // coordinates.
 func (d *Display) At(x, y int) (t string, f, b color.Color) {
+	if d == nil {
+		return "", Colors[7], color.Transparent
+	}
 	return d.Text.At(x, y), rgba(d.Foreground.At(x, y)), rgba(d.Background.At(x, y))
 }
 
@@ -115,48 +123,30 @@ func (d *Display) Bounds() image.Rectangle {
 	return d.Rect
 }
 
-// Render appends ANSI escape sequences to a byte slice to update a terminal
-// display to look like the front model, skipping cells that are the same in
-// the back model, using escape sequences and the nearest matching colors in
-// the given color model.
-func Render(buf []byte, cur cursor.Cursor, over, under *Display, model vtcolor.Model) ([]byte, cursor.Cursor) {
+// Render appends ANSI escape sequences to a byte slice to overwrite an entire
+// terminal window, using the best matching colors in the terminal color model.
+func Render(buf []byte, cur Cursor, over *Display, model Model) ([]byte, Cursor) {
+	return RenderOver(buf, cur, over, nil, model)
+}
+
+// RenderOver appends ANSI escape sequences to a byte slice to update a
+// terminal display to look like the front model, skipping cells that are the
+// same in the back model, using escape sequences and the nearest matching
+// colors in the given color model.
+func RenderOver(buf []byte, cur Cursor, over, under *Display, model Model) ([]byte, Cursor) {
 	for y := over.Rect.Min.Y; y < over.Rect.Max.Y; y++ {
 		for x := over.Rect.Min.X; x < over.Rect.Max.X; x++ {
 			ot, of, ob := over.At(x, y)
 			ut, uf, ub := under.At(x, y)
-
-			// nop if empty text or previous generation of the display
-			// was already correct.
-			if len(ot) == 0 || ot == ut && of == uf && ob == ub {
+			if len(ot) == 0 || (ot == ut && of == uf && ob == ub) {
 				continue
 			}
-
 			buf, cur = cur.Go(buf, image.Pt(x, y))
-			if of != cur.Foreground {
-				buf = model.RenderForegroundColor(buf, of)
-				cur.Foreground = rgba(of)
-			}
-			if ob != cur.Background {
-				buf = model.RenderBackgroundColor(buf, ob)
-				cur.Background = rgba(ob)
-			}
-			buf = append(buf, ot...)
-
-			if len(ot) == 1 {
-				cur.Position.X++
-			} else if len(ot) > 1 {
-				// Invalidate cursor column to force position reset
-				// before next draw, if the string drawn might be longer
-				// than one cell wide.
-				cur.Position.X = -1
-			}
-
+			buf, cur = model.Render(buf, cur, of, ob)
+			buf, cur = cur.WriteGlyph(buf, ot)
 		}
 	}
+
 	buf, cur = cur.Reset(buf)
 	return buf, cur
-}
-
-func rgba(c color.Color) color.RGBA {
-	return color.RGBAModel.Convert(c).(color.RGBA)
 }

@@ -1,4 +1,4 @@
-package vtcolor
+package display
 
 import (
 	"image/color"

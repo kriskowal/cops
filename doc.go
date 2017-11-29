@@ -7,9 +7,8 @@
 // Render for producing ANSI escape sequences to differentially update a
 // terminal.
 //
-// The "cursor" package models cursor state and has methods to modify color,
-// position, and visibility, appending the corresponding ANSI escape sequences
-// to a write buffer.
+// The display package also includes an ANSI cursor, colors, palettes, and
+// rendering models for 0, 3, 4, 8, and 24 bit color.
 //
 // The "textile" package implements a text layer, like Go's own "image"
 // package.
@@ -18,9 +17,6 @@
 //
 // The "terminal" package provides an idiomatic Go interface for terminal
 // capabilities ("raw mode", "no echo", getting and setting size).
-//
-// The "vtcolor" package supplements "color" with virtual terminal color
-// palettes and rendering models for 0, 3, 4, 8, and 24 bit color.
 //
 // The "rectangle" package provides conveniences for manipulating image
 // rectangles for display composition.

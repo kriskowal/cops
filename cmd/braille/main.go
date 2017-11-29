@@ -9,10 +9,8 @@ import (
 
 	"github.com/disintegration/imaging"
 	"github.com/kriskowal/cops/braille"
-	"github.com/kriskowal/cops/cursor"
 	"github.com/kriskowal/cops/display"
 	"github.com/kriskowal/cops/terminal"
-	"github.com/kriskowal/cops/vtcolor"
 )
 
 func main() {
@@ -49,11 +47,11 @@ func Main() error {
 	braille.Draw(front, front.Bounds(), img2, image.ZP, color.Black, color.White)
 
 	var buf []byte
-	cur := cursor.Start
+	cur := display.Start
 	buf, cur = cur.Hide(buf)
 	buf, cur = cur.Home(buf)
 	buf, cur = cur.Clear(buf)
-	buf, cur = display.Render(buf, cur, front, back, vtcolor.Model24)
+	buf, cur = display.RenderOver(buf, cur, front, back, display.Model24)
 	os.Stdout.Write(buf)
 	front, back = back, front
 	buf = buf[0:0]

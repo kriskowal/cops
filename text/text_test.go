@@ -4,10 +4,8 @@ import (
 	"image"
 	"testing"
 
-	"github.com/kriskowal/cops/cursor"
 	"github.com/kriskowal/cops/display"
-	"github.com/kriskowal/cops/geometry"
-	"github.com/kriskowal/cops/vtcolor"
+	"github.com/kriskowal/cops/rectangle"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,24 +22,24 @@ func TestRender(t *testing.T) {
 	bounds := Bounds(str)
 	front := display.New(bounds)
 	back := display.New(bounds)
-	front.Fill("", vtcolor.Colors[7], vtcolor.Colors[0])
-	Write(front, bounds, str, vtcolor.Colors[7])
+	front.Fill("", display.Colors[7], display.Colors[0])
+	Write(front, bounds, str, display.Colors[7])
 	var buf []byte
-	cur := cursor.Reset
-	buf, cur = display.Render(buf, cur, front, back, vtcolor.Model0)
+	cur := display.Reset
+	buf, cur = display.RenderOver(buf, cur, front, back, display.Model0)
 	assert.Equal(t, "abc\r\n123", string(buf), "renders two line string")
 }
 
 func TestOffset(t *testing.T) {
 	str := "abc"
 	bounds := Bounds(str).Add(image.Pt(2, 1))
-	outset := geometry.Outset(bounds, 2, 1)
+	outset := rectangle.Outset(bounds, 2, 1)
 	front := display.New(outset)
 	back := display.New(outset)
-	front.Fill(".", vtcolor.Colors[7], vtcolor.Colors[0])
-	Write(front, bounds, str, vtcolor.Colors[7])
+	front.Fill(".", display.Colors[7], display.Colors[0])
+	Write(front, bounds, str, display.Colors[7])
 	var buf []byte
-	cur := cursor.Reset
-	buf, cur = display.Render(buf, cur, front, back, vtcolor.Model0)
+	cur := display.Reset
+	buf, cur = display.RenderOver(buf, cur, front, back, display.Model0)
 	assert.Equal(t, ".......\r\n..abc..\r\n.......", string(buf))
 }

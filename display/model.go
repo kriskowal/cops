@@ -1,15 +1,15 @@
-package vtcolor
+package display
 
-import "image/color"
+import (
+	"image/color"
+)
 
 // Model is the interface for a terminal color rendering model.
 type Model interface {
-	// RenderForegroundColor appends the byte sequence for changing the
-	// foreground color to the nearest color supported by the model.
-	RenderForegroundColor([]byte, color.Color) []byte
-	// RenderBackgroundColor appends the byte sequence for changing the
-	// background color to the nearest color supported by the model.
-	RenderBackgroundColor([]byte, color.Color) []byte
+	// Render appends the ANSI sequence for changing the foreground and
+	// background color to the nearest colors supported by the terminal color
+	// model.
+	Render(buf []byte, cur Cursor, fg, bg color.Color) ([]byte, Cursor)
 }
 
 type model struct {
@@ -17,12 +17,16 @@ type model struct {
 	background func([]byte, color.Color) []byte
 }
 
-func (m model) RenderForegroundColor(buf []byte, col color.Color) []byte {
-	return m.foreground(buf, col)
-}
-
-func (m model) RenderBackgroundColor(buf []byte, col color.Color) []byte {
-	return m.background(buf, col)
+func (m model) Render(buf []byte, cur Cursor, fg, bg color.Color) ([]byte, Cursor) {
+	if fg != cur.Foreground {
+		buf = m.foreground(buf, fg)
+		cur.Foreground = rgba(fg)
+	}
+	if bg != cur.Background {
+		buf = m.background(buf, bg)
+		cur.Background = rgba(bg)
+	}
+	return buf, cur
 }
 
 var (

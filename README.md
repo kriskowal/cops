@@ -18,11 +18,10 @@ composite color layers.
 
 ```go
 bounds := image.Rect(0, 0, 80, 23)
-front := display.New(bounds)
-back := display.New(bounds)
+disp := display.New(bounds)
 ```
 
-## display.Draw
+## draw
 
 Cops can draw displays with alpha transparency channels over lower display
 layers.
@@ -53,23 +52,33 @@ Drawing will:
 Cops defers the decision to render to 3, 4, 8, or 24 bit terminal color model
 to the very last phase of rendering, so application authors are free to use the
 gammut of any color model supported by Go, including third-party color models
-like HUSLuv, or pluck any safe colors from the `".../cops/vtcolor"` package.
+like HUSLuv, or pluck from the terminal 256 color palette in `display.Colors`.
 
-## display.Render
+## render
 
-The display package provides a `Render` method.
+The display package provides `Render` and `RenderOver` methods.
 The render method produces a sequence of bytes to write that will update a
 terminal, skipping over cells that have not changed.
 
 ```go
 Render(
     buf []byte,
-    cur cursorCursor,
-    front, back *display.Display,
-    model vtcolor.Model,
+    cur display.Cursor,
+    dis *display.Display,
+    model display.Model,
 ) (
     buf []byte,
-    cur cursor.Cursor,
+    cur display.Cursor,
+)
+
+RenderOver(
+    buf []byte,
+    cur display.Cursor,
+    over, under *display.Display,
+    model display.Model,
+) (
+    buf []byte,
+    cur display.Cursor,
 )
 ```
 
@@ -85,8 +94,9 @@ each frame over the previous.
 
 ```go
 var buf []byte
-cur := cursor.Start
-buf, cur = display.Render(buf, cur, front, back, vtcolor.Model24)
+cur := display.Start
+front, back := display.New2(bounds)
+buf, cur = display.Render(buf, cur, front, back, display.Model24)
 front, back = back, front
 buf = buf[0:0]
 ```
@@ -98,7 +108,7 @@ samples these colors down to the terminal's supported color model.
 
 Render accepts the current cursor state and returns the cursor state after
 applying the rendered bytes to the terminal.
-The `cursor` package provides the cursor type, which has methods for updating
+The `display` package provides the cursor type, which has methods for updating
 the cursor's position, foreground color, and background color.  Each of these
 methods append to a buffer and return the resulting cursor state.
 
@@ -106,7 +116,7 @@ The initial cursor state is unknown, assuming nothing about the cursor
 position or coloring.
 
 ```go
-cur := cursor.Start
+cur := display.Start
 ```
 
 The differential update will attempt to use relative cursor position changes
@@ -118,7 +128,7 @@ Partial-display or log-leading renders are possible by postulating that the
 current cursor position at the origin and drawing around it.
 
 ```go
-cur := cursor.Reset
+cur := display.Reset
 ```
 
 The cursor has methods to produce the commands that will show and hide the
@@ -127,7 +137,7 @@ another cell's coordinates.
 
 ```go
 var buf []byte
-cur := cursor.Start
+cur := display.Start
 buf, cur = cur.Hide(buf)
 buf, cur = cur.Clear(buf)
 buf, cur = cur.Home(buf)
@@ -142,6 +152,23 @@ buf, cur = cur.Show(buf)
 os.Stdout.Write(buf)
 buf = buf[0:0]
 ```
+
+## colors
+
+The `display` package provides the terminal colors, palettes, terminal
+rendering color models.
+
+- `Colors` is an array of 256 palette colors.
+  - The first 8 are the 3-bit color palette.
+  - The second 8 (8-15) are their bright versions from the 4-bit color palette.
+  - The remaining colors form the 6x6x6 color cube and 24 grays scale.
+- `Palette3`, `Palette4`, and `Palette8` are Go `"image".Palette` instances for
+  colors expressible in those ranges.
+- `Model0`, `Model3`, `Model4`, `Model8`, and `Model24` are virtual terminal
+  color depth models with methods for rendering background and foreground
+  colors to ANSI escape sequences, as used by `"display".Render`.
+  `Model0` is monochrome and does not render color. `Model24` uses
+  paletted colors only for exact matches.
 
 ## textile
 
@@ -173,23 +200,6 @@ characters will necessarily be merged on the terminal display, invalidating the
 cursor's horizontal position after rendering each cell that contains more than
 one byte of text, then seeking to the next cell before rendering another.
 
-## vtcolor
-
-The `vtcolor` package provides the terminal colors, palettes, terminal
-rendering color models.
-
-- `Colors` is an array of 256 palette colors.
-  - The first 8 are the 3-bit color palette.
-  - The second 8 (8-15) are their bright versions from the 4-bit color palette.
-  - The remaining colors form the 6x6x6 color cube and 24 grays scale.
-- `Palette3`, `Palette4`, and `Palette8` are Go `"image".Palette` instances for
-  colors expressible in those ranges.
-- `Model0`, `Model3`, `Model4`, `Model8`, and `Model24` are virtual terminal
-  color depth models with methods for rendering background and foreground
-  colors to ANSI escape sequences, as used by `"display".Render`.
-  `Model0` is monochrome and does not render color. `Model24` uses
-  paletted colors only for exact matches.
-
 ## text
 
 The `text` package provides a convenience for rendering plain text
@@ -205,7 +215,7 @@ front, back := display.New2(bounds)
 msg := "Hello, Cops!"
 msgbox := text.Bounds(msg)
 center := rectangle.MiddleCenter(msgbox, bounds)
-text.Write(front, center, msg, vtcolor.Colors[7])
+text.Write(front, center, msg, display.Colors[7])
 ```
 
 The text package executes only the smallest subset of the terminal language,
@@ -252,7 +262,7 @@ See `cmd/braille/` for a demonstration.
 ## How to fill the background color for a text panel
 
 ```go
-panel := text.Display("Press any key to continue...", vtcolor.Colors[7])
+panel := text.Display("Press any key to continue...", display.Colors[7])
 draw.Draw(panel.Background, panel.Bounds(), &image.Uniform{color.NRGBA{63, 63, 63, 128}}, image.ZP, draw.Over)
 ```
 

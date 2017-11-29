@@ -1,14 +1,10 @@
-// Package cursor models cursor state and has methods to modify color,
-// position, and visibility, appending the corresponding ANSI escape sequences
-// to a write buffer.
-package cursor
+package display
 
 import (
 	"image"
 	"image/color"
 	"strconv"
-
-	"github.com/kriskowal/cops/vtcolor"
+	"unicode/utf8"
 )
 
 // Cursor models the known or unknown states of a cursor.
@@ -37,8 +33,8 @@ var (
 	// settings for the next text.
 	Start = Cursor{
 		Position:   Lost,
-		Foreground: vtcolor.Transparent,
-		Background: vtcolor.Transparent,
+		Foreground: Transparent,
+		Background: Transparent,
 	}
 
 	// Reset is a cursor state indicating that the cursor is at the origin
@@ -47,8 +43,8 @@ var (
 	// cur.Reset() will append nothing to the buffer.
 	Reset = Cursor{
 		Position:   image.ZP,
-		Foreground: vtcolor.Colors[7],
-		Background: vtcolor.Colors[0],
+		Foreground: Colors[7],
+		Background: Colors[0],
 	}
 )
 
@@ -75,13 +71,13 @@ func (c Cursor) Clear(buf []byte) ([]byte, Cursor) {
 
 // Reset returns the terminal to default white on black colors.
 func (c Cursor) Reset(buf []byte) ([]byte, Cursor) {
-	if c.Foreground == vtcolor.Colors[7] && c.Background == vtcolor.Colors[0] {
+	if c.Foreground == Colors[7] && c.Background == Colors[0] {
 		return buf, c
 	}
 	return append(buf, "\033[m"...), Cursor{
 		Position:   c.Position,
-		Foreground: vtcolor.Colors[7],
-		Background: vtcolor.Colors[0],
+		Foreground: Colors[7],
+		Background: Colors[0],
 	}
 }
 
@@ -159,5 +155,23 @@ func (c Cursor) Go(buf []byte, to image.Point) ([]byte, Cursor) {
 	}
 
 	c.Position = to
+	return buf, c
+}
+
+// TODO: func (c Cursor) Write(buf, p []byte) ([]byte, Cursor)
+
+// WriteGlyph appends the given string's UTF8 bytes into the given
+// buffer, invalidating the cursor if the string COULD HAVE rendered
+// to more than one glyph; otherwise the cursor's X is advanced by 1.
+func (c Cursor) WriteGlyph(buf []byte, s string) ([]byte, Cursor) {
+	buf = append(buf, s...)
+	if n := utf8.RuneCountInString(s); n > 1 {
+		// Invalidate cursor column to force position reset
+		// before next draw, if the string drawn might be longer
+		// than one cell wide.
+		c.Position.X = -1
+	} else if n == 1 {
+		c.Position.X++
+	}
 	return buf, c
 }

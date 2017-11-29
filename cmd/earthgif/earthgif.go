@@ -10,10 +10,8 @@ import (
 	"time"
 
 	"github.com/disintegration/imaging"
-	"github.com/kriskowal/cops/cursor"
 	"github.com/kriskowal/cops/display"
 	"github.com/kriskowal/cops/terminal"
-	"github.com/kriskowal/cops/vtcolor"
 )
 
 func main() {
@@ -46,12 +44,12 @@ func Main() error {
 	front, back := display.New2(bounds)
 
 	front.Text.Fill(" ")
-	draw.Draw(front.Background, bounds, &image.Uniform{vtcolor.Colors[0]}, image.ZP, draw.Src)
-	draw.Draw(front.Foreground, bounds, &image.Uniform{vtcolor.Colors[0]}, image.ZP, draw.Src)
+	draw.Draw(front.Background, bounds, &image.Uniform{display.Colors[0]}, image.ZP, draw.Src)
+	draw.Draw(front.Foreground, bounds, &image.Uniform{display.Colors[0]}, image.ZP, draw.Src)
 
 	// Clear Home Hide
 	var buf []byte
-	cur := cursor.Start
+	cur := display.Start
 	buf, cur = cur.Hide(buf)
 	buf, cur = cur.Clear(buf)
 	buf, cur = cur.Home(buf)
@@ -77,7 +75,7 @@ Loop:
 		draw.Draw(front.Background, projection, img2, img2.Bounds().Min, draw.Over)
 
 		// Draw frame
-		buf, cur = display.Render(buf, cur, front, back, vtcolor.Model24)
+		buf, cur = display.RenderOver(buf, cur, front, back, display.Model24)
 		front, back = back, front
 		buf, cur = cur.Home(buf)
 		os.Stdout.Write(buf)
