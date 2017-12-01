@@ -34,6 +34,11 @@ func (b *Bitmap) At(x, y int) color.Color {
 	return b.Palette[0]
 }
 
+// Bounds returns the bounds of the bitmap
+func (b *Bitmap) Bounds() image.Rectangle {
+	return b.Rect
+}
+
 // Set sets the color at a point.
 func (b *Bitmap) Set(x, y int, c color.Color) {
 	b.BitSet(x, y, color.Model(b.Palette).Convert(c) != b.Palette[0])
@@ -49,9 +54,13 @@ func (b *Bitmap) BitAt(x, y int) bool {
 	if !image.Pt(x, y).In(b.Rect) {
 		return false
 	}
-	i := y*b.Stride + x/8
-	by := b.Bytes[i]
-	return by&(1<<uint(x)&0x7) != 0
+
+	i := y * b.Stride
+	j := i + x>>3
+	k := (i + x) & 07
+
+	byt := b.Bytes[j]
+	return byt&(1<<uint(k&07)) != 0
 }
 
 // BitSet sets or resets the bit at a point.
@@ -59,10 +68,13 @@ func (b *Bitmap) BitSet(x, y int, bit bool) {
 	if !image.Pt(x, y).In(b.Rect) {
 		return
 	}
-	i := y*b.Stride + x/8
+
+	i := y * b.Stride
+	j := i + x>>3
+	k := (i + x) & 07
 	if bit {
-		b.Bytes[i] |= 1 << uint(x) & 07
+		b.Bytes[j] |= 1 << uint(k)
 	} else {
-		b.Bytes[i] &^= 1 << uint(x) & 07
+		b.Bytes[j] &^= 1 << uint(k)
 	}
 }
