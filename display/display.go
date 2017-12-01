@@ -61,17 +61,18 @@ func (d *Display) SubDisplay(r image.Rectangle) *Display {
 
 // Fill overwrites every cell with the given text and foreground and background
 // colors.
-func (d *Display) Fill(t string, f, b color.Color) {
-	for y := d.Rect.Min.Y; y < d.Rect.Max.Y; y++ {
-		for x := d.Rect.Min.X; x < d.Rect.Max.X; x++ {
+func (d *Display) Fill(r image.Rectangle, t string, f, b color.Color) {
+	r = r.Intersect(d.Rect)
+	for y := r.Min.Y; y < r.Max.Y; y++ {
+		for x := r.Min.X; x < r.Max.X; x++ {
 			d.Set(x, y, t, f, b)
 		}
 	}
 }
 
 // Clear fills the display with transparent cells.
-func (d *Display) Clear() {
-	d.Fill("", color.Transparent, color.Transparent)
+func (d *Display) Clear(r image.Rectangle) {
+	d.Fill(r, "", color.Transparent, color.Transparent)
 }
 
 // Set overwrites the text and foreground and background colors of the cell at

@@ -65,7 +65,7 @@ func (t Terminal) Size() (image.Point, error) {
 
 // SetSize alters the dimensions of the virtual terminal.
 func (t Terminal) SetSize(size image.Point) error {
-	return setSize(t.fd, size)
+	return SetSize(t.fd, size)
 }
 
 func bounds(fd uintptr) (image.Rectangle, error) {
@@ -86,7 +86,7 @@ func size(fd uintptr) (size image.Point, err error) {
 	return image.Pt(int(dimensions[1]), int(dimensions[0])), nil
 }
 
-func setSize(fd uintptr, size image.Point) (err error) {
+func SetSize(fd uintptr, size image.Point) (err error) {
 	dimensions := [4]uint16{uint16(size.Y), uint16(size.X), 0, 0}
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
 		fd, syscall.TIOCSWINSZ, uintptr(unsafe.Pointer(&dimensions)))
