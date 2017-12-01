@@ -138,7 +138,13 @@ func RenderOver(buf []byte, cur Cursor, over, under *Display, model Model) ([]by
 		for x := over.Rect.Min.X; x < over.Rect.Max.X; x++ {
 			ot, of, ob := over.At(x, y)
 			ut, uf, ub := under.At(x, y)
-			if len(ot) == 0 || (ot == ut && of == uf && ob == ub) {
+			if len(ot) == 0 {
+				ot = " "
+			}
+			if len(ut) == 0 {
+				ut = " "
+			}
+			if ot == ut && of == uf && ob == ub {
 				continue
 			}
 			buf, cur = cur.Go(buf, image.Pt(x, y))
@@ -146,7 +152,5 @@ func RenderOver(buf []byte, cur Cursor, over, under *Display, model Model) ([]by
 			buf, cur = cur.WriteGlyph(buf, ot)
 		}
 	}
-
-	buf, cur = cur.Reset(buf)
 	return buf, cur
 }

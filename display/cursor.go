@@ -135,15 +135,26 @@ func (c Cursor) Go(buf []byte, to image.Point) ([]byte, Cursor) {
 		// column glyph.
 	}
 
+	// DOWN
+	// Use \r\n to advance cursor Y on the chance it will advance the
+	// display bounds.
+	if to.Y > c.Position.Y {
+		buf = append(buf, "\r"...)
+		c.Position.X = 0
+	}
+	for to.Y > c.Position.Y {
+		buf = append(buf, "\n"...)
+		c.Position.Y++
+	}
+
+	// UP
 	if to.Y < c.Position.Y {
 		buf = append(buf, "\033["...)
 		buf = append(buf, strconv.Itoa(c.Position.Y-to.Y)...)
 		buf = append(buf, "A"...)
-	} else if to.Y > c.Position.Y {
-		buf = append(buf, "\033["...)
-		buf = append(buf, strconv.Itoa(to.Y-c.Position.Y)...)
-		buf = append(buf, "B"...)
 	}
+
+	// LEFT OR RIGHT
 	if to.X < c.Position.X {
 		buf = append(buf, "\033["...)
 		buf = append(buf, strconv.Itoa(c.Position.X-to.X)...)
@@ -165,13 +176,13 @@ func (c Cursor) Go(buf []byte, to image.Point) ([]byte, Cursor) {
 // to more than one glyph; otherwise the cursor's X is advanced by 1.
 func (c Cursor) WriteGlyph(buf []byte, s string) ([]byte, Cursor) {
 	buf = append(buf, s...)
-	if n := utf8.RuneCountInString(s); n > 1 {
+	if n := utf8.RuneCountInString(s); n == 1 {
+		c.Position.X++
+	} else {
 		// Invalidate cursor column to force position reset
 		// before next draw, if the string drawn might be longer
-		// than one cell wide.
+		// than one cell wide or simply empty.
 		c.Position.X = -1
-	} else if n == 1 {
-		c.Position.X++
 	}
 	return buf, c
 }
