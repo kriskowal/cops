@@ -38,13 +38,16 @@ func BrailleAt(src cops.BitmapReader, sp image.Point) string {
 	if src.BitAt(sp.X+1, sp.Y+3) {
 		r |= 0x80
 	}
+	if r == 0 {
+		return ""
+	}
 	return string(0x2800 + r)
 }
 
 // Draw composites a bitmap into the text and foreground layer of a display
 // based on whether the colors of the source image more closely resemble the on
 // or off colors of a bitmap palette.
-func Draw(dst *display.Display, r image.Rectangle, src image.Image, sp image.Point, off, on color.Color) {
+func Draw(dst *display.Display, r image.Rectangle, src image.Image, sp image.Point, on, off color.Color) {
 	// internal.Clip(dst.Bounds(), &r, src.Bounds(), &sp, nil, nil)
 	r = r.Intersect(dst.Bounds())
 	if r.Empty() {
@@ -55,9 +58,14 @@ func Draw(dst *display.Display, r image.Rectangle, src image.Image, sp image.Poi
 	w, h := r.Dx(), r.Dy()
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			p := image.Pt(x*2, y*4).Add(sp)
-			dst.Text.Set(r.Min.X+x, r.Min.Y+y, BrailleAt(bits, p))
-			dst.Foreground.Set(r.Min.X+x, r.Min.Y+y, on)
+			pt := image.Pt(x*3, y*6).Add(sp)
+			dx := r.Min.X + x
+			dy := r.Min.Y + y
+			br := BrailleAt(bits, pt)
+			if br != "" {
+				dst.Text.Set(dx, dy, br)
+				dst.Foreground.Set(dx, dy, on)
+			}
 		}
 	}
 }
@@ -68,6 +76,6 @@ func Bounds(r image.Rectangle) image.Rectangle {
 	w, h := r.Dx(), r.Dy()
 	return image.Rectangle{
 		r.Min,
-		r.Min.Add(image.Pt(w*2, h*4)),
+		r.Min.Add(image.Pt(w*3, h*6)).Sub(image.Pt(1, 2)),
 	}
 }
